@@ -2,6 +2,7 @@ package com.webshop.repository;
 
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.Wildcard;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.webshop.constant.ItemSellStatus;
 import com.webshop.dto.ItemSearchDto;
@@ -59,18 +60,24 @@ public class ItemRepositoryCustomImpl implements ItemRepositoryCustom{
 
     @Override
     public Page<Item> getAdminItemPage(ItemSearchDto itemSearchDto, Pageable pageable) {
-        QueryResults<Item> results = queryFactory
+        List<Item> content = queryFactory
                 .selectFrom(QItem.item)
                 .where(regDtsAfter(itemSearchDto.getSearchDateType()),
                         searchSellStatusEq(itemSearchDto.getSearchSellStatus()),
-                        searchByLike(itemSearchDto.getSearchBy(), itemSearchDto.getSearchQuery()))
+                        searchByLike(itemSearchDto.getSearchBy(),
+                                itemSearchDto.getSearchQuery()))
                 .orderBy(QItem.item.id.desc())
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
-                .fetchResults();
+                .fetch();
 
-        List<Item> content = results.getResults();
-        long total = results.getTotal();
+        long total = queryFactory.select(Wildcard.count).from(QItem.item)
+                .where(regDtsAfter(itemSearchDto.getSearchDateType()),
+                        searchSellStatusEq(itemSearchDto.getSearchSellStatus()),
+                        searchByLike(itemSearchDto.getSearchBy(), itemSearchDto.getSearchQuery()))
+                .fetchOne()
+                ;
+
         return new PageImpl<>(content, pageable, total);
     }
 
